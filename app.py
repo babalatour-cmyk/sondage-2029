@@ -5,14 +5,17 @@ import os
 
 DB_FILE = "election_2029_results.json"
 
-# Fonction pour charger les données (Votes + Vues)
+# Fonction pour charger les données proprement
 def load_data():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r") as f:
             data = json.load(f)
-            # Initialisation si structure ancienne
-            if isinstance(data, dict) and "votes" not in data:
-                data = {"votes": data, "views": 0}
+            # Si le fichier a l'ancienne structure (juste un dictionnaire de votes)
+            if "Ousmane Sonko (PASTEF)" in data:
+                return {
+                    "votes": data,
+                    "views": 0
+                }
             return data
     return {
         "votes": {"Ousmane Sonko (PASTEF)": 0, "Bassirou Diomaye (Coalition Diomaye Président)": 0},
@@ -25,11 +28,11 @@ def save_data(data):
 
 st.set_page_config(page_title="Sondage Sénégal 2029", layout="centered")
 
-# Chargement initial
+# Chargement des données
 if 'db' not in st.session_state:
     st.session_state.db = load_data()
 
-# Incrémentation invisible des vues
+# Compteur de visites INVISIBLE
 if 'tracked' not in st.session_state:
     st.session_state.db["views"] += 1
     save_data(st.session_state.db)
@@ -45,19 +48,17 @@ st.markdown("""
             rgba(227, 27, 35, 0.08) 100%);
     }
     .footer { position: fixed; left: 0; bottom: 0; width: 100%; text-align: center; padding: 10px; background: white; border-top: 1px solid #ddd; z-index: 100; }
-    .stButton>button { width: 100%; border-radius: 20px; background-color: #008037; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🇸🇳 Élections 2029 : Le Sondage")
 
-# --- Affichage Candidats ---
+# --- Affichage des Candidats ---
 col_s, col_d = st.columns(2)
 with col_s:
     if os.path.exists("sonko.png"): st.image("sonko.png")
     elif os.path.exists("sonko.jpg"): st.image("sonko.jpg")
     st.write("**PASTEF**")
-
 with col_d:
     if os.path.exists("diomaye.png"): st.image("diomaye.png")
     elif os.path.exists("diomaye.jpg"): st.image("diomaye.jpg")
@@ -70,6 +71,7 @@ if 'has_voted' not in st.session_state:
     st.session_state.has_voted = False
 
 if not st.session_state.has_voted:
+    # On n'affiche QUE les clés présentes dans "votes"
     choix = st.radio("Faites votre choix :", list(st.session_state.db["votes"].keys()))
     if st.button("Valider mon vote 🗳️"):
         st.session_state.db["votes"][choix] += 1
@@ -80,7 +82,7 @@ if not st.session_state.has_voted:
 else:
     st.success("Merci ! Votre vote a été enregistré.")
 
-# --- Résultats (Uniquement les votes sont visibles) ---
+# --- Résultats (Views supprimées de l'affichage) ---
 st.subheader("📊 Résultats en direct")
 df = pd.DataFrame(list(st.session_state.db["votes"].items()), columns=["Candidat", "Voix"])
 total_votes = df["Voix"].sum()
@@ -93,5 +95,5 @@ if total_votes > 0:
 else:
     st.write("En attente des premiers votes...")
 
-# Footer professionnel
+# Footer
 st.markdown(f'<div class="footer">Créé par <b>Babacar Sarr dev front end</b></div>', unsafe_allow_html=True)
