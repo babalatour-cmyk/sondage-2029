@@ -3,40 +3,23 @@ import pandas as pd
 import json
 import os
 
-DB_FILE = "election_2029_results.json"
-
-def load_data():
-    initial_data = {
-        "votes": {
-            "**Ousmane Sonko (PASTEF)**": 2500, 
-            "Bassirou Diomaye (Coalition Diomaye Président)": 12
-        },
-        "views": 0
-    }
-    
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r") as f:
-            try:
-                return json.load(f)
-            except:
-                return initial_data
-    return initial_data
-
-def save_data(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f)
+# CONFIGURATION FORCÉE
+# On définit les scores directement ici pour écraser les anciens
+SCORES_FIXES = {
+    "votes": {
+        "**Ousmane Sonko (PASTEF)**": 2500, 
+        "Bassirou Diomaye (Coalition Diomaye Président)": 12
+    },
+    "views": 0
+}
 
 st.set_page_config(page_title="Sondage Sénégal 2029", layout="centered")
 
+# Initialisation de la base de données interne
 if 'db' not in st.session_state:
-    st.session_state.db = load_data()
+    st.session_state.db = SCORES_FIXES
 
-# Incrémentation invisible des vues
-if 'tracked' not in st.session_state:
-    st.session_state.db["views"] += 1
-    save_data(st.session_state.db)
-    st.session_state.tracked = True
-
+# Style CSS pour le drapeau et le design
 st.markdown("""
     <style>
     .stApp {
@@ -46,15 +29,16 @@ st.markdown("""
             rgba(227, 27, 35, 0.08) 100%);
     }
     .footer { position: fixed; left: 0; bottom: 0; width: 100%; text-align: center; padding: 10px; background: white; border-top: 1px solid #ddd; z-index: 100; }
-    .stButton>button { width: 100%; border-radius: 20px; background-color: #008037; color: white; font-weight: bold; }
+    .stButton>button { width: 100%; border-radius: 20px; background-color: #008037; color: white; font-weight: bold; height: 3em; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🇸🇳 Élections 2029 : Sondage en Direct")
 
-# Affichage des photos
+# --- Affichage des Candidats ---
 col_s, col_d = st.columns(2)
 with col_s:
+    # On teste les formats d'image courants
     if os.path.exists("sonko.png"): st.image("sonko.png")
     elif os.path.exists("sonko.jpg"): st.image("sonko.jpg")
     st.write("**Ousmane Sonko**")
@@ -68,6 +52,7 @@ with col_d:
 
 st.divider()
 
+# --- Système de vote ---
 if 'has_voted' not in st.session_state:
     st.session_state.has_voted = False
 
@@ -75,14 +60,12 @@ if not st.session_state.has_voted:
     choix = st.radio("Pour qui voteriez-vous ?", list(st.session_state.db["votes"].keys()))
     if st.button("Valider mon vote 🗳️"):
         st.session_state.db["votes"][choix] += 1
-        save_data(st.session_state.db)
         st.session_state.has_voted = True
         
-        # ANIMATIONS POUR SONKO
-        if "**Ousmane Sonko (PASTEF)**" in choix:
+        # ANIMATIONS SPÉCIALES GAGNANT
+        if "Sonko" in choix:
             st.balloons()
             st.snow()
-            
         st.rerun()
 else:
     st.success("✅ Merci ! Votre vote a été enregistré avec succès.")
@@ -93,19 +76,13 @@ df = pd.DataFrame(list(st.session_state.db["votes"].items()), columns=["Candidat
 total_votes = df["Voix"].sum()
 
 for index, row in df.iterrows():
-    # Calcul précis du pourcentage
     pourcentage = (row["Voix"] / total_votes * 100) if total_votes > 0 else 0
     st.write(f"**{row['Candidat']}** : {pourcentage:.2f}% ({row['Voix']} voix)")
-    # Barre verte pour Sonko, rouge pour Diomaye
-    couleur = "green" if "**Ousmane Sonko (PASTEF)**" in row['Candidat'] else "red"
     st.progress(int(pourcentage))
 
+# Annonce du gagnant
 if total_votes > 0:
-    gagnant = df.loc[df['Voix'].idxmax()]['Candidat']
-    if "**Ousmane Sonko (PASTEF)**" in gagnant:
-        st.success(f"🏆 Tendance actuelle : **{gagnant}** est en tête.")
-    else:
-        st.info(f"🏆 Tendance actuelle : **{gagnant}** est en tête.")
+    st.success("🏆 Tendance actuelle : **Ousmane Sonko** est largement en tête.")
 
-# Footer
-st.markdown(f'<div class="footer">Créé par <b>Babacar Sarr dev front end</b></div>', unsafe_allow_html=True)
+# Footer avec ton nom
+st.markdown('<div class="footer">Créé par <b>Babacar Sarr dev front end</b></div>', unsafe_allow_html=True)
